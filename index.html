@@ -33,24 +33,28 @@ body{font-size:18px}main{padding-bottom:110px}
 .lk{font-size:1rem;padding:12px 8px}input,select,textarea{font-size:1.05rem;padding:12px}
 .mute,.warn,.on{font-size:1rem}nav button{font-size:.95rem;padding:16px 2px}button{touch-action:manipulation}
 #tt{position:fixed;left:12px;right:12px;bottom:calc(66px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:6px 14px;border-radius:10px;display:flex;justify-content:space-between;align-items:center;z-index:9}#tt[hidden]{display:none}#tt .lk{color:var(--bg);font-weight:700;text-decoration:underline}
+.fl select{flex:1;max-width:62%}.go{width:100%;margin-top:10px}.hd{text-transform:none;font-size:1.1rem}
+.run{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center}.run>div{grid-column:1}.run .b{grid-row:1/span 4;grid-column:2}
+.zn{font-weight:600;color:var(--mute)}.sn{font-size:1.25rem;font-weight:700}.pl{font-size:.9rem}.vuoto{text-align:center;color:var(--mute);padding:18px 0}
+.add.col{flex-direction:column}.add.col .row{margin:0}.add.col input:not([type=color]){width:100%}
 </style></head><body>
 <main id="v"></main>
 <div id="tt" hidden></div>
-<nav><button data-tab="oggi">Settori</button><button data-tab="cal">Calendario</button><button data-tab="sto">Storico</button><button data-tab="mag">Magazzino</button></nav>
+<nav><button data-tab="oggi">Home</button><button data-tab="cal">Calendario</button><button data-tab="sto">Storico</button><button data-tab="mag">Magazzino</button></nav>
 <script>
 const TYPES={acqua:'Acqua',trattamento:'Trattamento',concimazione:'Concimazione'};
 const COL=['#2f8f4e','#d08a1e','#2b7bbf','#b5485d','#7b5ab5','#1f9c9c'];
 let S={zones:[],logs:[],alertDays:7,stock:[]};
 try{const r=localStorage.getItem('campo');if(r)S=Object.assign(S,JSON.parse(r))}catch(e){}
 const save=()=>{try{localStorage.setItem('campo',JSON.stringify(S))}catch(e){}};
-let tab='oggi',sel=new Date(),cal=new Date(),pick=null,conf=null,io='',msg='',view='m',undo=null,tm=null,ms=null,ml=null,mmsg='',dmsg='',hs='',hf='tutti',dr=null,ed=null,emsg='';
+let tab='oggi',sel=new Date(),cal=new Date(),pick=null,conf=null,io='',msg='',view='m',fm=null,sz='',ss='',ht='',hmsg='',undo=null,tm=null,ms=null,ml=null,mmsg='',dmsg='',hs='',hf='tutti',dr=null,ed=null,emsg='';
 const $=s=>document.querySelector(s);
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const uid=()=>Math.random().toString(36).slice(2,9);
 const dur=ms=>{const m=Math.floor(ms/60000);return m<60?m+' min':Math.floor(m/60)+' h '+(m%60)+' min'};
 const open=id=>S.logs.find(l=>l.s===id&&!l.e);
 const last=id=>S.logs.filter(l=>l.s===id).sort((a,b)=>b.b-a.b)[0];
-const blank=()=>({n:'',q:'',u:'L',o:''});
+const blank=()=>({n:'',q:'',u:'L',o:''});dr={p:[blank()]};
 const ul=x=>x.u==='Altro'?(x.o||'altro'):x.u;
 const prodTxt=l=>(l.p||[]).map(x=>esc(x.n)+(x.q?' '+esc(x.q)+' '+esc(ul(x)):'')).join(', ');
 const clean=p=>p.filter(x=>x.n.trim()).map(x=>({n:x.n.trim(),q:x.q,u:x.u,o:(x.o||'').trim()}));
@@ -67,20 +71,20 @@ const dd=ms=>new Date(ms).toLocaleDateString('it-IT',{weekday:'short',day:'numer
 function toast(m,u){undo=u;const t=$('#tt');t.innerHTML=m+' <button class="lk" data-a="undo">Annulla</button>';t.hidden=false;clearTimeout(tm);tm=setTimeout(()=>{t.hidden=true;undo=null},8000)}
 function start(i,t,p){const zz=S.zones.find(z=>z.sectors.some(s=>s.id===i)),cl=[];zz.sectors.forEach(s=>{const o=open(s.id);if(o){o.e=Date.now();cl.push(o)}});const l={id:uid(),s:i,t,b:Date.now(),e:null,p};S.logs.push(l);toast('Settore acceso.',{k:'start',id:l.id,cl})}
 const prodEd=(p,c)=>p.map((x,k)=>`<div class="pr"><input list="stk" data-c="${c}" data-k="${k}" data-f="n" placeholder="Prodotto" value="${esc(x.n)}"><input data-c="${c}" data-k="${k}" data-f="q" type="number" step="any" min="0" placeholder="Quantità" value="${esc(x.q)}"><select data-c="${c}" data-k="${k}" data-f="u">${['L','Kg','Sacchi','Altro'].map(u=>`<option${u===x.u?' selected':''}>${u}</option>`).join('')}</select>${x.u==='Altro'?`<input data-c="${c}" data-k="${k}" data-f="o" placeholder="Unità" value="${esc(x.o||'')}">`:''}${p.length>1?`<button class="lk" data-a="delp" data-c="${c}" data-k="${k}">×</button>`:''}</div>`).join('')+`<datalist id="stk">${S.stock.map(s=>`<option value="${esc(s.n)}">`).join('')}</datalist><button class="lk" data-a="addp" data-c="${c}">+ Aggiungi prodotto</button>`;
-function status(id){const o=open(id);
-if(o)return `<span class="on">Acceso, ${TYPES[o.t].toLowerCase()}, da <b data-b="${o.b}">${dur(Date.now()-o.b)}</b></span>${o.p&&o.p.length?`<br><span class="mute">${prodTxt(o)}</span>`:''}`;
-const l=last(id);if(!l)return '<span class="mute">Mai acceso</span>';
-const d=Math.floor((Date.now()-(l.e||l.b))/864e5);
-if(d>=S.alertDays)return `<span class="warn">Non acceso da ${d} giorni</span>`;
-return `<span class="mute">Ultima volta ${d==0?'oggi':d==1?'ieri':d+' giorni fa'}, ${TYPES[l.t].toLowerCase()}</span>`}
-function oggi(){let h='';
-for(const z of S.zones){h+=`<section class="z" style="--c:${z.color}"><header><h2>${esc(z.name)}</h2><button class="lk" data-a="delz" data-i="${z.id}">${conf==='delz'+z.id?'Conferma eliminazione':'Elimina zona'}</button></header>`;
-for(const s of z.sectors){const o=open(s.id);
-h+=`<div class="s"><div><b>${esc(s.name)}</b> <button class="lk" data-a="dels" data-i="${s.id}">${conf==='dels'+s.id?'Conferma':'×'}</button><br>${status(s.id)}</div>`+(o?`<button class="b stop" data-a="stop" data-i="${s.id}">Spegni</button>`:`<button class="b" data-a="pick" data-i="${s.id}">Accendi</button>`)+`</div>`;
-if(pick===s.id)h+=(dr&&dr.s===s.id?`<div class="pk col"><b>${TYPES[dr.t]}</b>${prodEd(dr.p,'d')}${dmsg?`<p class="warn">${dmsg}</p>`:''}<div class="row"><button class="b" data-a="go">Avvia</button><button class="lk" data-a="canc">Annulla</button></div></div>`:`<div class="pk">`+Object.entries(TYPES).map(([k,v])=>`<button class="b" data-a="${k==='acqua'?'on':'dr'}" data-i="${s.id}" data-t="${k}">${v}</button>`).join('')+`</div>`)}
-h+=`<form class="add" data-a="adds" data-i="${z.id}"><input placeholder="Nuovo settore" required><button class="b">Aggiungi</button></form></section>`}
-h+=`<form class="z add" data-a="addz"><input placeholder="Nuova zona" required><input type="color" value="${COL[S.zones.length%COL.length]}"><button class="b">Crea zona</button></form>`;
-return (S.zones.length?'':'<p class="mute">Crea la prima zona, poi aggiungi i suoi settori.</p>')+h+'<p><button class="lk" data-tab="imp">Impostazioni e backup</button></p>'}
+function oggi(){
+if(!S.zones.length)return '<h2>Benvenuto</h2><p class="mute">Per iniziare crea le zone e i settori della tua azienda.</p><button class="b go" data-tab="zone">Crea zone e settori</button>';
+const z=S.zones.find(x=>x.id===sz);
+let h=`<section class="z"><b>Avvia un impianto</b><label class="fl">Zona <select id="hz"><option value="">Scegli la zona</option>${S.zones.map(x=>`<option value="${x.id}"${x.id===sz?' selected':''}>${esc(x.name)}</option>`).join('')}</select></label><label class="fl">Settore <select id="hx"${z?'':' disabled'}><option value="">Scegli il settore</option>${z?z.sectors.map(s=>`<option value="${s.id}"${s.id===ss?' selected':''}>${esc(s.name)}${open(s.id)?' (acceso)':''}</option>`).join(''):''}</select></label><div class="row seg">${Object.entries(TYPES).map(([k,v])=>`<button class="b${ht===k?'':' off'}" data-a="ht" data-i="${k}">${v}</button>`).join('')}</div>${ht&&ht!=='acqua'?`<div class="pk col">${prodEd(dr.p,'d')}</div>`:''}${hmsg?`<p class="warn">${hmsg}</p>`:''}<button class="b go" data-a="go">Avvia</button></section>`;
+const zn=id=>{for(const z of S.zones)for(const s of z.sectors)if(s.id===id)return [z,s]};
+const R=S.logs.filter(l=>!l.e).sort((a,b)=>a.b-b.b);
+h+=`<h3 class="hd">In esecuzione</h3>`+(R.length?R.map(l=>{const [zz,s]=zn(l.s)||[{name:'?',color:'#999'},{name:'?'}];
+return `<section class="z run" style="--c:${zz.color}"><div class="zn">${esc(zz.name)}</div><div class="sn">${esc(s.name)} (${TYPES[l.t].toLowerCase()})</div>${l.p&&l.p.length?`<div class="mute pl">${prodTxt(l)}</div>`:''}<div class="mute">avviato ${hm(l.b)} (<b data-b="${l.b}">${dur(Date.now()-l.b)}</b>)</div><button class="b stop" data-a="stop" data-i="${l.s}">Spegni</button></section>`}).join(''):'<p class="vuoto">Nessun impianto in esecuzione</p>');
+const al=[];S.zones.forEach(z=>z.sectors.forEach(s=>{if(open(s.id))return;const l=last(s.id);if(!l)return;const d=Math.floor((Date.now()-(l.e||l.b))/864e5);if(d>=S.alertDays)al.push([z.name,s.name,d])}));
+if(al.length)h+=`<h3 class="hd">Da controllare</h3>`+al.map(x=>`<div class="s"><div><b>${esc(x[0])}, ${esc(x[1])}</b><br><span class="warn">Non acceso da ${x[2]} giorni</span></div></div>`).join('');
+return h+'<p><button class="lk" data-tab="imp">Impostazioni e backup</button></p>'}
+function zone(){let h='<button class="lk" data-tab="oggi">‹ Torna alla Home</button><h2>Zone e settori</h2><p class="mute">Qui crei le zone e i loro settori. Di solito si fa una volta sola.</p>'+(fm?`<p class="${fm[1]}">${esc(fm[0])}</p>`:'');
+for(const z of S.zones){h+=`<section class="z" style="--c:${z.color}"><header><h2>${esc(z.name)}</h2><button class="lk" data-a="delz" data-i="${z.id}">${conf==='delz'+z.id?'Conferma eliminazione':'Elimina zona'}</button></header>`+z.sectors.map(s=>`<div class="s"><b>${esc(s.name)}</b><button class="lk" data-a="dels" data-i="${s.id}">${conf==='dels'+s.id?'Conferma eliminazione':'Elimina'}</button></div>`).join('')+`<form class="add" data-a="adds" data-i="${z.id}"><input placeholder="Nuovo settore"><button class="b">Aggiungi</button></form></section>`}
+return h+`<form class="z add col" data-a="addz"><input placeholder="Nome della nuova zona"><div class="row"><input type="color" value="${COL[S.zones.length%COL.length]}"><button class="b">Crea zona</button></div></form>`}
 function logCard(l,zc,sd){const c=zc[l.s]||['#999','?','?'];
 if(ed&&ed.id===l.id)return `<div class="z" style="--c:${c[0]}"><b>${esc(c[1])}, ${esc(c[2])}</b><label class="fl">Tipo <select data-f="t">${Object.entries(TYPES).map(([k,v])=>`<option value="${k}"${k===ed.t?' selected':''}>${v}</option>`).join('')}</select></label><label class="fl">Inizio <input type="datetime-local" data-f="b" value="${ed.b}"></label>${ed.run?'<p class="mute">Ancora acceso: la fine resta vuota finché non lo spegni.</p>':`<label class="fl">Fine <input type="datetime-local" data-f="e" value="${ed.e}"></label>`}${ed.t!=='acqua'?prodEd(ed.p,'e'):''}${emsg?`<p class="warn">${emsg}</p>`:''}<div class="row"><button class="b" data-a="sv">Salva</button><button class="lk" data-a="canc">Annulla</button><button class="lk" data-a="rm" data-i="${l.id}">${conf==='rm'+l.id?'Conferma eliminazione':'Elimina'}</button></div></div>`;
 return `<div class="s" style="border-left:4px solid ${c[0]};padding-left:10px"><div><b>${esc(c[1])}, ${esc(c[2])}</b><br><span class="mute">${sd?dd(l.b)+', ':''}${TYPES[l.t]}, dalle ${hm(l.b)}, ${l.e?'durata '+dur(l.e-l.b):'ancora acceso'}</span>${l.p&&l.p.length?`<br><span class="mute">${prodTxt(l)}</span>`:''}</div><button class="lk" data-a="edit" data-i="${l.id}">Modifica</button></div>`}
@@ -119,17 +123,21 @@ const low=s=>+s.q<=0||(s.m!==''&&s.m!=null&&+s.q<=+s.m);
 const L=[...S.stock].sort((a,b)=>low(b)-low(a)||a.n.localeCompare(b.n));
 h+=L.length?L.map(s=>`<div class="s"><div><b>${esc(s.n)}</b><br><span class="${low(s)?'warn':'mute'}">${fmt(s.q)} ${esc(ul(s))}${s.k?' ('+fmt(s.q*s.k)+' '+esc(s.u2)+')':''}${+s.q<=0?', finito':low(s)?', sta finendo':''}</span></div><div class="row"><button class="lk" data-a="mload" data-i="${s.id}">+ Carico</button><button class="lk" data-a="medit" data-i="${s.id}">Modifica</button></div></div>${ml===s.id?`<div class="pr"><input id="ma" type="number" step="any" min="0" placeholder="Quantità arrivata">${s.k?`<select id="mu2"><option>${esc(ul(s))}</option><option value="${esc(s.u2)}">${esc(s.u2)}</option></select>`:''}<button class="b sm" data-a="madd" data-i="${s.id}">Aggiungi</button><button class="lk" data-a="mcanc">Annulla</button></div>`:''}`).join(''):'<p class="mute">Il magazzino è vuoto: aggiungi i prodotti che hai in casa. Quando registri un trattamento o una concimazione con uno di questi prodotti, la quantità si scala da sola.</p>';
 return h}
-function impost(){return `<button class="lk" data-tab="oggi">‹ Indietro</button><h2>Avviso</h2><p><label>Avvisa se un settore non viene acceso da <input id="ad" type="number" min="1" value="${S.alertDays}"> giorni</label></p><h2>Backup dei dati</h2><p class="mute">Premi Crea backup, copia il testo e conservalo (per esempio nelle note). Per ripristinare, incollalo qui e premi Importa.</p><textarea id="io" rows="5">${esc(io)}</textarea><div class="row"><button class="b" data-a="exp">Crea backup</button><button class="b" data-a="imp">Importa</button></div>${msg?`<p class="ok">${msg}</p>`:''}`}
-function draw(){$('#v').innerHTML=tab==='oggi'?oggi():tab==='cal'?calendario():tab==='sto'?storico():tab==='mag'?magaz():impost();
+function impost(){return `<button class="lk" data-tab="oggi">‹ Indietro</button><p><button class="b" data-tab="zone">Zone e settori</button></p><h2>Avviso</h2><p><label>Avvisa se un settore non viene acceso da <input id="ad" type="number" min="1" value="${S.alertDays}"> giorni</label></p><h2>Backup dei dati</h2><p class="mute">Premi Crea backup, copia il testo e conservalo (per esempio nelle note). Per ripristinare, incollalo qui e premi Importa.</p><textarea id="io" rows="5">${esc(io)}</textarea><div class="row"><button class="b" data-a="exp">Crea backup</button><button class="b" data-a="imp">Importa</button></div>${msg?`<p class="ok">${msg}</p>`:''}<p class="mute">Versione dell’app: 19/10, n. 2</p>`}
+function draw(){$('#v').innerHTML=tab==='oggi'?oggi():tab==='zone'?zone():tab==='cal'?calendario():tab==='sto'?storico():tab==='mag'?magaz():impost();
 document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('cur',b.dataset.tab===tab))}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-a],[data-tab]');if(!b||b.tagName==='FORM')return;
-if(b.dataset.tab){tab=b.dataset.tab;msg='';ed=null;draw();return}
+if(b.dataset.tab){tab=b.dataset.tab;msg='';ed=null;fm=null;draw();return}
 const a=b.dataset.a,i=b.dataset.i;
 if(a==='pick'){pick=pick===i?null:i;dr=null}
 else if(a==='on'){start(i,b.dataset.t,[]);pick=null;save()}
 else if(a==='dr'){dmsg='';dr={s:i,t:b.dataset.t,p:[blank()]}}
-else if(a==='go'){const p=clean(dr.p),er=chk(p);if(er)dmsg=er;else{start(dr.s,dr.t,p);adj(p,-1);dr=null;pick=null;dmsg='';save()}}
-else if(a==='canc'){dr=null;ed=null;emsg='';conf=null}
+else if(a==='ht'){ht=i;hmsg=''}
+else if(a==='go'){const z=S.zones.find(x=>x.id===sz),s=z&&z.sectors.find(x=>x.id===ss);
+if(!s||!ht)hmsg='Scegli la zona, il settore e cosa vuoi fare.';
+else if(open(ss))hmsg='Questo settore è già acceso.';
+else{const p=ht==='acqua'?[]:clean(dr.p),er=chk(p);if(er)hmsg=er;else{start(ss,ht,p);adj(p,-1);ss='';ht='';dr={p:[blank()]};hmsg='';save()}}}
+else if(a==='canc'){ed=null;emsg='';conf=null}
 else if(a==='addp'){(b.dataset.c==='d'?dr:ed).p.push(blank())}
 else if(a==='delp'){(b.dataset.c==='d'?dr:ed).p.splice(+b.dataset.k,1)}
 else if(a==='vw'){view=i;cal=new Date(sel.getFullYear(),sel.getMonth(),1)}
@@ -159,12 +167,15 @@ else if(a==='mon')cal=new Date(cal.getFullYear(),cal.getMonth()+ +i,1);
 else if(a==='exp'){io=JSON.stringify(S);msg='Backup pronto: copia tutto il testo qui sopra.'}
 else if(a==='imp'){try{const d=JSON.parse($('#io').value);if(!Array.isArray(d.zones)||!Array.isArray(d.logs))throw 0;S=Object.assign({zones:[],logs:[],alertDays:7,stock:[]},d);save();io='';msg='Dati importati.'}catch(x){io=$('#io').value;msg='Backup non valido: incolla il testo completo.'}}
 draw()});
-document.addEventListener('submit',e=>{e.preventDefault();const f=e.target,a=f.dataset.a,v=f.querySelector('input').value.trim();if(!v)return;
+document.addEventListener('submit',e=>{e.preventDefault();const f=e.target,a=f.dataset.a,v=f.querySelector('input').value.trim();if(!v){fm=['Scrivi prima il nome, poi premi il pulsante.','warn'];draw();return}
 if(a==='addz')S.zones.push({id:uid(),name:v,color:f.querySelector('[type=color]').value,sectors:[]});
 else S.zones.find(z=>z.id===f.dataset.i).sectors.push({id:uid(),name:v});
-save();draw()});
+fm=[(a==='addz'?'Zona “':'Settore “')+v+(a==='addz'?'” creata. Ora aggiungi i suoi settori qui sotto.':'” aggiunto.'),'ok'];
+save();draw();if(a==='addz')scrollTo(0,0)});
 function setf(t){const f=t.dataset.f;if(!f)return;const o=t.dataset.c==='d'?dr:t.dataset.c==='m'?ms:ed;if(!o)return;if(t.dataset.k!==undefined)o.p[+t.dataset.k][f]=t.value;else o[f]=t.value}
-document.addEventListener('change',e=>{const t=e.target;if(t.id==='hs'){hs=t.value;draw();return}
+document.addEventListener('change',e=>{const t=e.target;if(t.id==='hz'){sz=t.value;ss='';hmsg='';draw();return}
+if(t.id==='hx'){ss=t.value;hmsg='';return}
+if(t.id==='hs'){hs=t.value;draw();return}
 if(t.id==='ad'){S.alertDays=Math.max(1,+t.value||7);save()}
 setf(t);if(t.dataset.f==='u'||t.dataset.f==='t'){if(t.dataset.f==='t'&&ed.t!=='acqua'&&!ed.p.length)ed.p.push(blank());draw()}});
 document.addEventListener('input',e=>{if(e.target.id==='io')io=e.target.value;setf(e.target)});
